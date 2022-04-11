@@ -5,6 +5,7 @@ import pandas as pd
 baseURL = 'https://www.amazon.co.uk/'
 
 response = requests.get(baseURL)
-print(response)
+print(response.text)
 
-soup = BeautifulSoup.get(response)
+soup = BeautifulSoup(response.text, "html.parser")
+print(soup.find_all('a'))
