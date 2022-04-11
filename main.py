@@ -6,3 +6,5 @@ baseURL = 'https://www.amazon.co.uk/'
 
 response = requests.get(baseURL)
 print(response)
+
+soup = BeautifulSoup.get(response)
