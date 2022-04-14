@@ -3,8 +3,11 @@ import re
 from bs4 import BeautifulSoup
 import requests
 import pandas as pd
+import streamlit as st
 
-job_name = input(r"Enter your job title to search: ").replace(' ', '-')
+st.title('Dream job Finder')
+
+job_name = st.text_input('Enter your dream job', value='data analyst')
 job_name = job_name.lower().replace(' ', '-')
 baseURL = 'https://www.reed.co.uk'
 jobs_baseURL = f'{baseURL}/jobs/{job_name}-jobs'
@@ -19,6 +22,18 @@ columns = ['Title', 'Posted-On', 'Company', 'Salary', 'Min Salary', 'Max Salary'
            'Remote/Office', 'Type', 'Time', 'More Info']
 job_df = pd.DataFrame(data=None, columns=columns)
 print(job_df)
+
+
+def get_min_max_salary(salary_text, term):
+    if len(salary_text.split('-')) == 2:
+        minsalary = salary_text.split('-')[0].strip()
+        maxsalary = salary_text.split('-')[1].split('per annum')[0].strip()
+    else:
+        minsalary = salary_text.split('per annum')[0].strip()
+        maxsalary = salary_text.split('per annum')[0].strip()
+    return minsalary, maxsalary
+
+
 for i, job_card in enumerate(job_cards):
     job_title = job_card.find("h3", class_='title').a
     job_posted_by = job_card.find("div", class_='posted-by')
@@ -42,23 +57,20 @@ for i, job_card in enumerate(job_cards):
     job_moreinfo_link = baseURL + job_title['href'] if job_title['href'].startswith('/') else job_title['href']
 
     if 'per day' in job_salary_text:
-        min_salary = job_salary_text.split('-')[0].strip()
-        max_salary = job_salary_text.split('-')[1].replace('per day', '').strip()
         salary_based_on = 'per day'
+        min_salary, max_salary = get_min_max_salary(job_salary_text, salary_based_on)
     elif 'per annum' in job_salary_text:
-        list_salary = job_salary_text.split('-')
-        if len(list_salary) == 2:
-            min_salary = job_salary_text.split('-')[0].strip()
-            max_salary = job_salary_text.split('-')[1].split('per annum')[0].strip()
-        else:
-            min_salary = job_salary_text.split('per annum')[0].strip()
-            max_salary = job_salary_text.split('per annum')[0].strip()
         salary_based_on = 'per annum'
+        min_salary, max_salary = get_min_max_salary(job_salary_text, salary_based_on)
+    elif 'per hour' in job_salary_text:
+        salary_based_on = 'per hour'
+        min_salary, max_salary = get_min_max_salary(job_salary_text, salary_based_on)
     else:
         # this is for competitive/ Salary negotiable text for salary
         min_salary = None
         max_salary = None
         salary_based_on = None
+
 
     list_df = [job_title_text, job_posted_by_text, job_company_text, job_salary_text, min_salary, max_salary,
                salary_based_on, job_location_text, job_remote_text, job_type_text, job_time_text, job_moreinfo_link]
@@ -67,12 +79,5 @@ for i, job_card in enumerate(job_cards):
 
     job_df.loc[i, :] = list_df
 
-    print(f'job title is {job_title_text}')
-    print(f'job posted by on {job_posted_by_text}')
-    print(f'job company by {job_company_text}')
-    print(f'job salary is {job_salary_text}')
-    print(f'job location is {job_location_text}')
-    print(f'job remote is {job_remote_text}')
-    print(f'job time is {job_time_text}')
-
 print(job_df.head())
+st.write(job_df.shape)
