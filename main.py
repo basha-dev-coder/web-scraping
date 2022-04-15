@@ -7,10 +7,17 @@ import pandas as pd
 import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import plotly.figure_factory as ff
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import streamlit.components.v1 as components
 
 st.title('Dream job Finder')
+st.write('<style>footer{visibility: hidden;}</style>', unsafe_allow_html=True)
 
-job_name = st.text_input('Enter your dream job', placeholder='for ex data analyst')
+job_name = st.text_input('Enter your dream job', placeholder='for ex: data analyst')
 job_name = job_name.lower().replace(' ', '-')
 baseURL = 'https://www.reed.co.uk'
 jobs_baseURL = f'{baseURL}/jobs/{job_name}-jobs'
@@ -20,11 +27,10 @@ response = requests.get(jobs_baseURL)
 
 soup = BeautifulSoup(response.text, "html.parser")
 job_cards = soup.find_all("article", class_=re.compile('job-result'))
-print(f"Total jobs are {len(job_cards)}")
+
 columns = ['Title', 'Posted-On', 'Company', 'Salary', 'Min Salary', 'Max Salary', 'Salary based on', 'Location',
            'Remote/Office', 'Type', 'Time', 'More Info']
 job_df = pd.DataFrame(data=None, columns=columns)
-print(job_df)
 
 
 def get_min_max_salary(salary_text, term):
@@ -90,6 +96,7 @@ job_df_copy['Remote/Office'] = job_df_copy['Remote/Office'].fillna('Work from Of
 # st.dataframe(job_df_copy)
 # number of columns having null values
 # st.write(job_df_copy.isna().sum())
+
 job_df_copy.dropna(inplace=True)
 job_df_copy.drop(columns=['Posted-On', 'Salary'], inplace=True)
 
@@ -97,32 +104,43 @@ job_df_copy['Min Salary'] = job_df_copy['Min Salary'].apply(lambda x: x[1:].repl
 
 job_df_copy['Max Salary'] = job_df_copy['Max Salary'].apply(lambda x: x[1:].replace(',', '')).astype(float)
 
-st.write(job_df_copy['Min Salary'].mean(), job_df_copy['Max Salary'].mean())
+job_df_copy['Mean Salary'] = (job_df_copy['Min Salary'] + job_df_copy['Max Salary']) / 2
+
+st.write(job_df_copy['Min Salary'].mean(), job_df_copy['Max Salary'].mean(),
+         (job_df_copy['Min Salary'].mean() + job_df_copy['Max Salary'].mean()) / 2, job_df_copy['Mean Salary'].mean())
+st.dataframe(job_df_copy)
 st.metric(label='Total Jobs', value=job_df_copy.shape[0])
-# st.dataframe(job_df_copy['Title','Type'])
-# job_df_copy['Type','Title']
-#
-# fig = px.bar(job_df_copy, values='Title')
-fig = go.Figure(data=[go.Pie(labels=job_df_copy['Type'].unique(),
-                             values=job_df_copy['Type'].value_counts(), title='Jobs Grouped by Type')])
 
-st.plotly_chart(fig, use_container_width=True)
-fig = go.Figure(data=[go.Pie(labels=job_df_copy['Remote/Office'].unique(),
-                             values=job_df_copy['Remote/Office'].value_counts(),
-                             title='Jobs Grouped by Remote/Office')])
+fig = plt.figure(figsize=(10, 3))
+plt.title('Type vs Remote/Office')
+sns.countplot(y='Type', data=job_df_copy, hue='Remote/Office')
+st.pyplot(fig)
 
-st.plotly_chart(fig, use_container_width=True)
-fig = go.Figure(data=[go.Pie(labels=job_df_copy['Salary based on'].unique(),
-                             values=job_df_copy['Salary based on'].value_counts(),
-                             title='Jobs Grouped by Salary type')])
+fig = plt.figure(figsize=(10, 3))
+plt.title('Type vs Salary based on')
+sns.countplot(y='Type', data=job_df_copy, hue='Salary based on')
+st.pyplot(fig)
 
-st.plotly_chart(fig, use_container_width=True)
-fig = go.Figure(data=[go.Pie(labels=job_df_copy['Location'].unique(),
-                             values=job_df_copy['Location'].value_counts(), title='Jobs Grouped by Location')])
+fig = plt.figure(figsize=(10, 3))
+plt.title('Type vs Location')
+plt.xticks(rotation=90)
+sns.countplot(hue='Type', data=job_df_copy, x='Location')
+st.pyplot(fig)
 
-st.plotly_chart(fig, use_container_width=True)
-fig = go.Figure(data=[go.Pie(labels=job_df_copy['Company'].unique(),
-                             values=job_df_copy['Company'].value_counts(), title='Jobs Grouped by Company')])
+fig = plt.figure(figsize=(10, 3))
+plt.title('Salary based on vs Location')
+plt.xticks(rotation=90)
+sns.countplot(hue='Salary based on', data=job_df_copy, x='Location')
+st.pyplot(fig)
 
-st.plotly_chart(fig, use_container_width=True)
-st.dataframe(job_df_copy['Company'].value_counts())
+# fig = plt.figure(figsize=(10, 3))
+# plt.title('Type vs Remote/Office')
+# sns.barplot(x='Max Salary',y='Location', data=job_df_copy)
+# st.pyplot(fig)
+
+per_annum_salary = job_df_copy[['Location', 'Mean Salary', 'Salary based on']].groupby('Salary based on')
+st.write(per_annum_salary.mean())
+
+fig = plt.figure(figsize=(7, 5))
+sns.violinplot(y='Min Salary', data=job_df_copy, x='Salary based on')
+st.pyplot(fig)
