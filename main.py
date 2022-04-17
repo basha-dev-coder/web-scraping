@@ -5,11 +5,6 @@ from bs4 import BeautifulSoup
 import requests
 import pandas as pd
 import streamlit as st
-import plotly.express as px
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-import plotly.figure_factory as ff
-import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import streamlit.components.v1 as components
@@ -105,11 +100,25 @@ job_df_copy['Min Salary'] = job_df_copy['Min Salary'].apply(lambda x: x[1:].repl
 job_df_copy['Max Salary'] = job_df_copy['Max Salary'].apply(lambda x: x[1:].replace(',', '')).astype(float)
 
 job_df_copy['Mean Salary'] = (job_df_copy['Min Salary'] + job_df_copy['Max Salary']) / 2
+job_df_copy[['Min Salary', 'Max Salary', 'Mean Salary']] = job_df_copy[
+    ['Min Salary', 'Max Salary', 'Mean Salary']].astype(int)
 
 st.write(job_df_copy['Min Salary'].mean(), job_df_copy['Max Salary'].mean(),
          (job_df_copy['Min Salary'].mean() + job_df_copy['Max Salary'].mean()) / 2, job_df_copy['Mean Salary'].mean())
 st.dataframe(job_df_copy)
-st.metric(label='Total Jobs', value=job_df_copy.shape[0])
+
+col1, col2, col3, col4 = st.columns(4)
+with col1:
+    st.metric(label='Total Jobs', value=job_df_copy.shape[0])
+with col2:
+    st.metric(label='Max Salary per annum',
+              value=job_df_copy.loc[job_df_copy['Salary based on'].isin(['per annum'])]['Max Salary'].max())
+with col3:
+    st.metric(label='Max Salary per day',
+              value=job_df_copy.loc[job_df_copy['Salary based on'].isin(['per day'])]['Max Salary'].max())
+with col4:
+    st.metric(label='Max Salary per hour',
+              value=job_df_copy.loc[job_df_copy['Salary based on'].isin(['per hour'])]['Max Salary'].max())
 
 fig = plt.figure(figsize=(10, 3))
 plt.title('Type vs Remote/Office')
@@ -138,9 +147,17 @@ st.pyplot(fig)
 # sns.barplot(x='Max Salary',y='Location', data=job_df_copy)
 # st.pyplot(fig)
 
-per_annum_salary = job_df_copy[['Location', 'Mean Salary', 'Salary based on']].groupby('Salary based on')
-st.write(per_annum_salary.mean())
+# per_annum_salary = job_df_copy[['Location', 'Mean Salary', 'Salary based on']].groupby('Salary based on')
+# st.write(per_annum_salary.mean())
+st.dataframe(job_df_copy['Location'].value_counts(sort=False))
 
-fig = plt.figure(figsize=(7, 5))
-sns.violinplot(y='Min Salary', data=job_df_copy, x='Salary based on')
-st.pyplot(fig)
+data_Mean = job_df_copy[job_df_copy['Salary based on'].isin(['per annum'])].groupby('Location')
+st.write(data_Mean.mean().sort_values(by='Mean Salary'))
+data_Mean = data_Mean.mean().sort_values(by='Mean Salary')
+data_Mean = data_Mean.join(job_df_copy['Location'].value_counts())
+data_Mean.rename(columns={'Location': 'No of Jobs'}, inplace=True)
+
+data_Mean.sort_values(by='No of Jobs', inplace=True, ascending=False)
+data_Mean.reset_index(inplace=True)
+data_Mean
+# pd.merge(data_Mean, job_df_copy['Location'].value_counts(), on = "Location", how = "left")
